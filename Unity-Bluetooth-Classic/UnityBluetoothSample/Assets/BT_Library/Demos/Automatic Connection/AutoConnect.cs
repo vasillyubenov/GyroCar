@@ -20,8 +20,9 @@ public class AutoConnect : MonoBehaviour
 	[SerializeField] private float distanceFromCamera = 500f;
 	[SerializeField] private GameObject startGameButton;
     private BluetoothDevice device;
+	private bool hasStartedGame = false;
 
-    void Awake ()
+    void Awake()
 	{
         if (Instance == null)
         {
@@ -40,7 +41,7 @@ public class AutoConnect : MonoBehaviour
 		} else {
 
 			//BluetoothAdapter.enableBluetooth(); //you can by this force enabling Bluetooth without asking the user
-			statusText.text = "Status : Please enable your Bluetooth";
+			DebugMessage("Status : Please enable your Bluetooth");
 
 			BluetoothAdapter.OnBluetoothStateChanged += HandleOnBluetoothStateChanged;
 			BluetoothAdapter.listenToBluetoothState (); // if you want to listen to the following two events  OnBluetoothOFF or OnBluetoothON
@@ -57,7 +58,7 @@ public class AutoConnect : MonoBehaviour
 
 	public void connect()
 	{
-		statusText.text = "Status : Trying To Connect";
+		DebugMessage("Status : Trying To Connect");
 
         /* The Property device.MacAdress doesn't require pairing. 
 		 * Also Mac Adress in this library is Case sensitive,  all chars must be capital letters
@@ -77,7 +78,7 @@ public class AutoConnect : MonoBehaviour
 		device.ReadingCoroutine = ManageConnection;
 
 
-        statusText.text = "Status : trying to connect";
+        DebugMessage("Status : trying to connect");
 
         device.connect();
 
@@ -99,9 +100,9 @@ public class AutoConnect : MonoBehaviour
 	void HandleOnDeviceOff (BluetoothDevice dev)
 	{
 		if (!string.IsNullOrEmpty (dev.Name)) {
-			statusText.text = "Status : can't connect to '" + dev.Name + "', device is OFF ";
+			DebugMessage("Status : can't connect to '" + dev.Name + "', device is OFF ");
 		} else if (!string.IsNullOrEmpty (dev.MacAddress)) {
-			statusText.text = "Status : can't connect to '" + dev.MacAddress + "', device is OFF ";
+			DebugMessage("Status : can't connect to '" + dev.MacAddress + "', device is OFF ");
 		}
 	}
 
@@ -109,7 +110,7 @@ public class AutoConnect : MonoBehaviour
 	void HandleOnDeviceNotFound(BluetoothDevice dev)
 	{
 		if (!string.IsNullOrEmpty(dev.Name)) {
-			statusText.text = "Status : Can't find a device with the name '" + dev.Name + "', device might be OFF or not paird yet ";
+            DebugMessage("Status : Can't find a device with the name '" + dev.Name + "', device might be OFF or not paird yet ");
 		} 
 	}
 
@@ -123,9 +124,9 @@ public class AutoConnect : MonoBehaviour
 	//Please note that you don't have to use this Couroutienes/IEnumerator, you can just put your code in the Update() method.
 	IEnumerator ManageConnection(BluetoothDevice device)
 	{
-		statusText.text = "Status : Connected & Can read " + device.MacAddress + "/" + device.Name;
+		DebugMessage("Status : Connected & Can read " + device.MacAddress + "/" + device.Name);
 
-		startGameButton.SetActive(true);
+        startGameButton.SetActive(true);
 
         while (device.IsReading) 
 		{
@@ -137,7 +138,7 @@ public class AutoConnect : MonoBehaviour
 				var firstJSON = GetFirstJSON(content);
 				if (firstJSON != null)
 				{
-					statusText.text = "MSG : " + firstJSON;
+					DebugMessage("MSG : " + firstJSON);
 					UpdatePlayer(JsonUtility.FromJson<SensorData>(firstJSON));
 				}
             }
@@ -145,11 +146,23 @@ public class AutoConnect : MonoBehaviour
             yield return null;
         }
 
-        statusText.text = "Status : Done Reading ";
+		DebugMessage("Status : Done Reading ");
     }
+
+	void DebugMessage(string msg)
+	{
+		if (!hasStartedGame)
+		{
+			statusText.text = msg;
+			return;
+        }
+
+		Debug.LogError(msg);
+	}
 
 	public void StartGame()
 	{
+		hasStartedGame = true;
         SceneManager.sceneLoaded += OnSceneLoaded; // Register the callback
 		SceneManager.LoadScene(1);
 	}
