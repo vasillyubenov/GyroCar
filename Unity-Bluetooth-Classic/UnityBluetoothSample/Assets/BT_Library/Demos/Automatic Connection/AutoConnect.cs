@@ -5,12 +5,17 @@ using System.Collections.Generic;
 using TechTweaking.Bluetooth;
 using UnityEngine.UI;
 using System.Text;
+using System.Text.RegularExpressions;
+using System;
 
 public class AutoConnect : MonoBehaviour
 {
     public string TargetMAC = "C8:F0:9E:52:2F:9A";
-	private  BluetoothDevice device;
 	public Text statusText;
+	public GameObject player;
+	[SerializeField] private float speedFactor = 20f;
+	[SerializeField] private float distanceFromCamera = 500f;
+    private BluetoothDevice device;
 
     void Awake ()
 	{
@@ -31,7 +36,15 @@ public class AutoConnect : MonoBehaviour
 
 	void Start()
 	{
-		BluetoothAdapter.OnDeviceOFF += HandleOnDeviceOff;//This would mean a failure in connection! the reason might be that your remote device is OFF
+        Camera mainCamera = Camera.main;
+
+        // Calculate a position distanceFromCamera units straight ahead of the camera
+        Vector3 positionInFrontOfCamera = mainCamera.transform.position + mainCamera.transform.forward * distanceFromCamera;
+
+        // Set player's position to the calculated position
+        player.transform.position = positionInFrontOfCamera;
+
+        BluetoothAdapter.OnDeviceOFF += HandleOnDeviceOff;//This would mean a failure in connection! the reason might be that your remote device is OFF
 
 		BluetoothAdapter.OnDeviceNotFound += HandleOnDeviceNotFound; //Because connecting using the 'Name' property is just searching, the Plugin might not find it!(only for 'Name').
 	}
@@ -116,7 +129,7 @@ public class AutoConnect : MonoBehaviour
     }
 
 
-    public void disconnect ()
+    public void disconnect()
 	{
 		if (device != null)
 			device.close ();
@@ -124,23 +137,57 @@ public class AutoConnect : MonoBehaviour
 	
 	//############### Reading Data  #####################
 	//Please note that you don't have to use this Couroutienes/IEnumerator, you can just put your code in the Update() method.
-	IEnumerator  ManageConnection (BluetoothDevice device)
+	IEnumerator ManageConnection(BluetoothDevice device)
 	{
 		statusText.text = "Status : Connected & Can read " + device.MacAddress + "/" + device.Name;
 
-		while (device.IsReading) {
+		while (device.IsReading) 
+		{
+			byte[] msg = device.read();
 
-			byte [] msg = device.read ();
-			if (msg != null) {
+			if (msg != null)
+			{
+                string content = System.Text.ASCIIEncoding.ASCII.GetString(msg);
+				var firstJSON = GetFirstJSON(content);
+				if (firstJSON != null)
+				{
+					statusText.text = "MSG : " + firstJSON;
+					UpdatePlayer(JsonUtility.FromJson<SensorData>(firstJSON));
+				}
+            }
 
-				
-				string content = System.Text.ASCIIEncoding.ASCII.GetString (msg);
-				statusText.text = "MSG : " + content;
-			}
-			yield return null;
+            yield return null;
+        }
+
+        statusText.text = "Status : Done Reading ";
+    }
+
+	string GetFirstJSON(string content)
+	{
+        string pattern = @"\{(.*?)\}";
+
+        Match match = Regex.Match(content, pattern);
+
+        if (match.Success)
+        {
+            return "{" + match.Groups[1].Value + "}";
+        }
+
+		return null;
+    }
+
+	void UpdatePlayer(SensorData data)
+	{
+		if (data == null)
+		{
+			return;
 		}
 
-		statusText.text = "Status : Done Reading ";
+        float w = float.Parse(data.angleW);
+        float x = float.Parse(data.angleX);
+        float y = float.Parse(data.angleY);
+        float z = float.Parse(data.angleZ);
+        player.transform.localRotation = Quaternion.Lerp(player.transform.localRotation, new Quaternion(x, y, z, w), Time.deltaTime * speedFactor);
     }
 	
 	
