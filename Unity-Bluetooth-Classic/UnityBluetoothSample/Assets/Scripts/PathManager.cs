@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PathManager : MonoBehaviour
 {
@@ -13,7 +14,6 @@ public class PathManager : MonoBehaviour
     private Queue<GameObject> grounds = new Queue<GameObject>();
 
     private float groundLength = 100f; // this should match the length of your ground block
-    private float groundWidth = 20f; // this should match the width of your ground block
     private int numInitialGrounds = 50; // the number of ground blocks to start with
     private Vector3 lastGroundEnd; // this is the new variable to keep track of the end of the last ground piece
     private System.Random random = new System.Random(); // for random obstacle creation
@@ -61,7 +61,7 @@ public class PathManager : MonoBehaviour
         // update lastGroundEnd to the end of the ground piece we just added
         lastGroundEnd = newGround.transform.position + new Vector3(0, 0, groundLength);
 
-        // Instantiate obstacle with a 5% chance
+        // Instantiate obstacle with a chance
         if (random.Next(maxPercent) < percentForObstacleSpawn)
         {
             GameObject newObstacle = Instantiate(obstaclePrefab);

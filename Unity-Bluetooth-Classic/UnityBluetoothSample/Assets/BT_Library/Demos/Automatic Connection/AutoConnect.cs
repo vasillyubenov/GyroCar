@@ -7,19 +7,33 @@ using UnityEngine.UI;
 using System.Text;
 using System.Text.RegularExpressions;
 using System;
+using UnityEngine.SceneManagement;
 
 public class AutoConnect : MonoBehaviour
 {
+	public static AutoConnect Instance;
+
     public string TargetMAC = "C8:F0:9E:52:2F:9A";
 	public Text statusText;
-	public GameObject player;
+	public PlayerMovement player;
 	[SerializeField] private float speedFactor = 20f;
 	[SerializeField] private float distanceFromCamera = 500f;
+	[SerializeField] private GameObject startGameButton;
     private BluetoothDevice device;
 
     void Awake ()
 	{
-		device = new BluetoothDevice();
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
+        device = new BluetoothDevice();
 
 		if (BluetoothAdapter.isBluetoothEnabled()) {
 			connect ();
@@ -36,14 +50,6 @@ public class AutoConnect : MonoBehaviour
 
 	void Start()
 	{
-        Camera mainCamera = Camera.main;
-
-        // Calculate a position distanceFromCamera units straight ahead of the camera
-        Vector3 positionInFrontOfCamera = mainCamera.transform.position + mainCamera.transform.forward * distanceFromCamera;
-
-        // Set player's position to the calculated position
-        player.transform.position = positionInFrontOfCamera;
-
         BluetoothAdapter.OnDeviceOFF += HandleOnDeviceOff;//This would mean a failure in connection! the reason might be that your remote device is OFF
 
 		BluetoothAdapter.OnDeviceNotFound += HandleOnDeviceNotFound; //Because connecting using the 'Name' property is just searching, the Plugin might not find it!(only for 'Name').
@@ -100,39 +106,17 @@ public class AutoConnect : MonoBehaviour
 	}
 
 	//Because connecting using the 'Name' property is just searching, the Plugin might not find it!.
-	void HandleOnDeviceNotFound (BluetoothDevice dev)
+	void HandleOnDeviceNotFound(BluetoothDevice dev)
 	{
-		if (!string.IsNullOrEmpty (dev.Name)) {
+		if (!string.IsNullOrEmpty(dev.Name)) {
 			statusText.text = "Status : Can't find a device with the name '" + dev.Name + "', device might be OFF or not paird yet ";
 		} 
 	}
 
-
-    public void sendHigh()
-    {
-        if (device != null)
-        {
-            //byte[] bytes = Encoding.ASCII.GetBytes("1");
-            //device.send(bytes);
-            device.send(System.Text.Encoding.ASCII.GetBytes("1" + (char)10));//10 is our seperator Byte (sepration between packets)
-        }
-    }
-    
-    public void sendLow()
-    {
-        if (device != null)
-        {
-            //byte[] bytes = Encoding.ASCII.GetBytes("0");
-            //device.send(bytes);
-            device.send(System.Text.Encoding.ASCII.GetBytes("0" + (char)10));//10 is our seperator Byte (sepration between packets)
-        }
-    }
-
-
     public void disconnect()
 	{
 		if (device != null)
-			device.close ();
+			device.close();
 	}
 	
 	//############### Reading Data  #####################
@@ -141,7 +125,9 @@ public class AutoConnect : MonoBehaviour
 	{
 		statusText.text = "Status : Connected & Can read " + device.MacAddress + "/" + device.Name;
 
-		while (device.IsReading) 
+		startGameButton.SetActive(true);
+
+        while (device.IsReading) 
 		{
 			byte[] msg = device.read();
 
@@ -162,7 +148,18 @@ public class AutoConnect : MonoBehaviour
         statusText.text = "Status : Done Reading ";
     }
 
-	string GetFirstJSON(string content)
+	public void StartGame()
+	{
+        SceneManager.sceneLoaded += OnSceneLoaded; // Register the callback
+		SceneManager.LoadScene(1);
+	}
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        player = FindObjectOfType<PlayerMovement>();
+    }
+
+    string GetFirstJSON(string content)
 	{
         string pattern = @"\{(.*?)\}";
 
@@ -178,17 +175,22 @@ public class AutoConnect : MonoBehaviour
 
 	void UpdatePlayer(SensorData data)
 	{
-		if (data == null)
-		{
-			return;
-		}
+        if (data == null)
+        {
+            return;
+        }
 
         float w = float.Parse(data.angleW);
         float x = float.Parse(data.angleX);
         float y = float.Parse(data.angleY);
         float z = float.Parse(data.angleZ);
 
-        player.transform.localRotation = Quaternion.Lerp(player.transform.localRotation, new Quaternion(x, y, z, w), Time.deltaTime * speedFactor);
+        MainThreadDispatcher.RunOnMainThread(() => {
+			if (player != null)
+			{
+				player.rotationAngle = y;
+			}
+        });
     }
 	
 	//############### Deregister Events  #####################

@@ -11,14 +11,14 @@ public class ScoreManager : MonoBehaviour
 
     private float currentScore = 0f;
 
-    private void Start()
+    public void Start()
     {
         StartCoroutine(ScoreIncrementCoroutine());
     }
 
     IEnumerator ScoreIncrementCoroutine()
     {
-        while (true) // loop forever
+        while (true)
         {
             yield return new WaitForSeconds(incrementDelay); // wait for the specified delay
             currentScore += scoreIncrementor; // then increment the score
