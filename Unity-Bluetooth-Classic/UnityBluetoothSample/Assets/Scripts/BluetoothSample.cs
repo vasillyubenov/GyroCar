@@ -9,22 +9,13 @@ public class BluetoothSample : MonoBehaviour
 
     public string port = "COM3";
     public int baudrate = 115200;
-    public GameObject player;
+    public PlayerMovement player;
     [SerializeField] private float speedFactor = 15f;
-    [SerializeField] private float distanceFromCamera = 500f;
 
     public string message { get; set; } = "0";
 
     void Start()
     {
-        Camera mainCamera = Camera.main;
-
-        // Calculate a position distanceFromCamera units straight ahead of the camera
-        Vector3 positionInFrontOfCamera = mainCamera.transform.position + mainCamera.transform.forward * distanceFromCamera;
-
-        // Set player's position to the calculated position
-        player.transform.position = positionInFrontOfCamera;
-
         serialReceiver = new SerialServiceManager(port, baudrate);
         serialReceiver.callback = GetData;
     }
@@ -64,7 +55,7 @@ public class BluetoothSample : MonoBehaviour
         float z = float.Parse(data.angleZ);
 
         MainThreadDispatcher.RunOnMainThread(() => {
-            player.transform.localRotation = Quaternion.Lerp(player.transform.localRotation, new Quaternion(x, y, z, w), Time.deltaTime * speedFactor);
+            player.rotationAngle = y;
         });
     }
 

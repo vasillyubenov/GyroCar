@@ -187,9 +187,9 @@ public class AutoConnect : MonoBehaviour
         float x = float.Parse(data.angleX);
         float y = float.Parse(data.angleY);
         float z = float.Parse(data.angleZ);
+
         player.transform.localRotation = Quaternion.Lerp(player.transform.localRotation, new Quaternion(x, y, z, w), Time.deltaTime * speedFactor);
     }
-	
 	
 	//############### Deregister Events  #####################
 	void OnDestroy ()

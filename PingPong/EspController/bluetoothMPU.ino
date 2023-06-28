@@ -23,12 +23,19 @@ uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
+// Previous acceleration
+VectorInt16 prevAccel;
+// Filter parameter
+float alpha = 0.5;
+
 // orientation/motion vars
 Quaternion q;           // [w, x, y, z]         quaternion container
 VectorInt16 aa;         // [x, y, z]            accel sensor measurements
 VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
 VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
 VectorFloat gravity;    // [x, y, z]            gravity vector
+VectorInt16 velocity; // [x, y, z] velocity vector
+VectorInt16 position; // [x, y, z] position vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -54,7 +61,6 @@ void setup() {
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
   } else {
-    // Error
     Serial.println("Error!");
   }
 }
@@ -76,17 +82,13 @@ void loop() {
     mpu.getFIFOBytes(fifoBuffer, packetSize);
     fifoCount -= packetSize;
 
-    String data = GetQuaternion().c_str();
+    String data = GetData().c_str();
     SerialBT.print(data);
     Serial.println(data);
-    //SendEuler();
-    //SendYawPitchRoll();
-    //SendRealAccel();
-    //SendWorldAccel();
   }
 }
 
-String GetQuaternion() {
+String GetData() {
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   readings["angleX"] = String(q.x);
   readings["angleY"] = String(q.y);
@@ -94,49 +96,4 @@ String GetQuaternion() {
   readings["angleW"] = String(q.w);
 
   return JSON.stringify(readings);
-}
-
-void SendEuler() {
-  // display Euler angles in degrees
-  mpu.dmpGetQuaternion(&q, fifoBuffer);
-  mpu.dmpGetEuler(euler, &q);
-  Serial.print(euler[0] * 180 / M_PI); Serial.print("/");
-  Serial.print(euler[1] * 180 / M_PI); Serial.print("/");
-  Serial.println(euler[2] * 180 / M_PI);
-}
-
-void SendYawPitchRoll() {
-  // display Euler angles in degrees
-  mpu.dmpGetQuaternion(&q, fifoBuffer);
-  mpu.dmpGetGravity(&gravity, &q);
-  mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-  Serial.print(ypr[0] * 180 / M_PI); Serial.print("/");
-  Serial.print(ypr[1] * 180 / M_PI); Serial.print("/");
-  Serial.println(ypr[2] * 180 / M_PI);
-}
-
-void SendRealAccel() {
-  // display real acceleration, adjusted to remove gravity
-  mpu.dmpGetQuaternion(&q, fifoBuffer);
-  mpu.dmpGetAccel(&aa, fifoBuffer);
-  mpu.dmpGetGravity(&gravity, &q);
-  mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-  Serial.print("a/");
-  Serial.print(aaReal.x); Serial.print("/");
-  Serial.print(aaReal.y); Serial.print("/");
-  Serial.println(aaReal.z);
-}
-
-void SendWorldAccel() {
-  // display initial world-frame acceleration, adjusted to remove gravity
-  // and rotated based on known orientation from quaternion
-  mpu.dmpGetQuaternion(&q, fifoBuffer);
-  mpu.dmpGetAccel(&aa, fifoBuffer);
-  mpu.dmpGetGravity(&gravity, &q);
-  mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-  mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-  Serial.print("a/");
-  Serial.print(aaWorld.x); Serial.print("/");
-  Serial.print(aaWorld.y); Serial.print("/");
-  Serial.println(aaWorld.z);
 }
